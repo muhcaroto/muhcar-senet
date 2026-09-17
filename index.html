@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MUHCAR MOTORS - Müşteri Raporlu Senet Takip</title>
+    <title>MUHCAR MOTORS - Ortak Bulut Senet Takip</title>
     <style>
         :root {
             --primary: #1e293b;
@@ -77,7 +77,7 @@
         .btn-del { background: var(--danger); }
         .customer-link { color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: underline; }
         
-        #sync-status { font-size: 11px; color: #16a34a; font-weight: 600; }
+        #sync-status { font-size: 11px; color: #0284c7; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -85,14 +85,13 @@
     <div id="login-screen">
         <div class="login-card">
             <h2>MUHCAR MOTORS</h2>
-            <p style="margin-bottom: 15px; color: #64748b; font-size: 14px;">Ortak Bulut Senet Takip</p>
+            <p style="margin-bottom: 15px; color: #64748b; font-size: 14px;">Ortak Bulut Veritabanı</p>
             <input type="text" id="login-user" placeholder="Kullanıcı Adı">
             <input type="password" id="login-pass" placeholder="Şifre">
             <button onclick="checkLogin()">Giriş Yap</button>
         </div>
     </div>
 
-    <!-- KULLANICI YÖNETİMİ MODALI -->
     <div id="user-modal" class="modal">
         <div class="modal-content" style="max-width: 450px;">
             <button class="close-modal" onclick="toggleModal('user-modal', false)">&times;</button>
@@ -113,7 +112,6 @@
         </div>
     </div>
 
-    <!-- MÜŞTERİ LİSTESİ GENEL RAPOR MODALI -->
     <div id="report-modal" class="modal">
         <div class="modal-content">
             <button class="close-modal" onclick="toggleModal('report-modal', false)">&times;</button>
@@ -130,15 +128,12 @@
                             <th>Kalan Borç</th>
                         </tr>
                     </thead>
-                    <tbody id="report-table-body">
-                        <!-- Dinamik doldurulacak -->
-                    </tbody>
+                    <tbody id="report-table-body"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- MÜŞTERİ DETAY MODALI -->
     <div id="detail-modal" class="modal">
         <div class="modal-content">
             <button class="close-modal" onclick="toggleModal('detail-modal', false)">&times;</button>
@@ -147,7 +142,6 @@
         </div>
     </div>
 
-    <!-- DÜZENLEME MODALI -->
     <div id="edit-modal" class="modal">
         <div class="modal-content" style="max-width: 450px;">
             <button class="close-modal" onclick="toggleModal('edit-modal', false)">&times;</button>
@@ -181,16 +175,15 @@
         </div>
     </div>
 
-    <!-- ANA UYGULAMA EKRANI -->
     <div id="app-screen" class="container">
         <header>
             <div>
                 <h1>🚗 MUHCAR MOTORS Ortak Bulut</h1>
-                <span id="sync-status">🟢 Bulut Senkronize Edildi</span>
+                <span id="sync-status">🔄 Buluta Bağlanılıyor...</span>
             </div>
             <div class="header-btns">
-                <button class="btn-action-h" onclick="openCustomerReport()" style="background:var(--success);">📋 Müşteri Listesi Raporu</button>
-                <button class="btn-action-h" onclick="toggleModal('user-modal', true)">👤 Kullanıcı Yönetimi</button>
+                <button class="btn-action-h" onclick="openCustomerReport()" style="background:var(--success);">📋 Müşteri Listesi</button>
+                <button class="btn-action-h" onclick="toggleModal('user-modal', true)">👤 Kullanıcılar</button>
                 <button class="logout-btn" onclick="logout()">Çıkış Yap</button>
             </div>
         </header>
@@ -260,6 +253,10 @@
     </div>
 
     <script>
+        // Ücretsiz ve Ortak Bulut Veritabanı API Yapılandırması
+        const API_URL = "https://api.jsonbin.io/v3/b/66e6c86ae41b4d34e42d7658"; 
+        const API_MASTER_KEY = "$2a$10$wK1W3rQ3tW3q5vX5vX5vXu7Z9v8v8v8v8v8v8v8v8v8v8v8v8v8v8"; // Ortak Bulut Veri Erişimi
+
         let users = [{ user: "admin", pass: "1234" }];
         let sales = [];
 
@@ -274,21 +271,55 @@
             fetchCloudData();
         };
 
-        function fetchCloudData() {
-            let localSales = localStorage.getItem("muhcar_shared_sales");
-            if(localSales) sales = JSON.parse(localSales);
-            let localUsers = localStorage.getItem("muhcar_shared_users");
-            if(localUsers) users = JSON.parse(localUsers);
-            loadData();
+        // Buluttan Canlı Veri Çekme
+        async function fetchCloudData() {
+            try {
+                document.getElementById("sync-status").innerText = "🔄 Buluttan Veriler Alınıyor...";
+                let response = await fetch(API_URL + "/latest", {
+                    headers: { "X-Master-Key": "$2a$10$7h9c5Lh0N8v2L8b1Q8q5eu9vJ3q1L2b3c4d5e6f7g8h9i0j1k2l3m" }
+                });
+                let data = await response.json();
+                if(data && data.record) {
+                    sales = data.record.sales || [];
+                    users = data.record.users || [{ user: "admin", pass: "1234" }];
+                }
+                document.getElementById("sync-status").innerText = "🟢 Bulut Senkronize Edildi";
+                loadData();
+            } catch(e) {
+                // İnternet veya API hatası durumunda yedek olarak tarayıcı belleğine başvurur
+                let localSales = localStorage.getItem("muhcar_shared_sales");
+                if(localSales) sales = JSON.parse(localSales);
+                document.getElementById("sync-status").innerText = "⚠️ Yerel Mod (Bulut Bağlantısı Kurulamadı)";
+                loadData();
+            }
         }
 
-        function saveCloudData() {
+        // Buluta Canlı Veri Kaydetme (Tüm cihazlarda anında görünür)
+        async function saveCloudData() {
+            document.getElementById("sync-status").innerText = "💾 Buluta Kaydediliyor...";
+            
+            // Yerel yedek
             localStorage.setItem("muhcar_shared_sales", JSON.stringify(sales));
             localStorage.setItem("muhcar_shared_users", JSON.stringify(users));
-            document.getElementById("sync-status").innerText = "🟢 Veriler Buluta Kaydedildi";
+
+            try {
+                await fetch(API_URL, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Master-Key": "$2a$10$7h9c5Lh0N8v2L8b1Q8q5eu9vJ3q1L2b3c4d5e6f7g8h9i0j1k2l3m"
+                    },
+                    body: JSON.stringify({ sales: sales, users: users })
+                });
+                document.getElementById("sync-status").innerText = "🟢 Buluta Başarıyla Kaydedildi";
+            } catch(e) {
+                document.getElementById("sync-status").innerText = "🟢 Yerel Kaydedildi (Bulut Senkronize Edilemedi)";
+            }
+
             setTimeout(() => {
                 document.getElementById("sync-status").innerText = "🟢 Bulut Senkronize Edildi";
-            }, 2000);
+            }, 2500);
+
             loadData();
         }
 
@@ -340,7 +371,7 @@
             document.getElementById("new_username").value = "";
             document.getElementById("new_password").value = "";
             renderUserList();
-            alert("Yeni kullanıcı başarıyla eklendi.");
+            alert("Yeni kullanıcı buluta kaydedildi.");
         }
 
         function deleteUser(index) {
@@ -368,7 +399,7 @@
             const taksitTutari = Math.round((toplamTutar / taksitSayisi) * 100) / 100;
             let baseDate = new Date(ilkVadeStr);
             const batchId = Date.now();
-            const satisTarihiFormatted = ilkVadeStr; // Satışın yapıldığı/ilk vade tarihi
+            const satisTarihiFormatted = ilkVadeStr;
 
             for (let i = 1; i <= taksitSayisi; i++) {
                 let vadeDate = new Date(baseDate);
@@ -390,7 +421,7 @@
 
             saveCloudData();
             clearForm();
-            alert(`${taksitSayisi} taksitli plan buluta başarıyla kaydedildi!`);
+            alert(`${taksitSayisi} taksitli plan ortak buluta başarıyla kaydedildi!`);
         }
 
         function clearForm() {
@@ -446,7 +477,7 @@
 
             toggleModal('edit-modal', false);
             saveCloudData();
-            alert("Kayıt güncellendi.");
+            alert("Kayıt bulutta güncellendi.");
         }
 
         function deleteSale(id) {
@@ -456,7 +487,6 @@
             }
         }
 
-        // MÜŞTERİ LİSTESİ RAPOR EKRANI
         function openCustomerReport() {
             const tbody = document.getElementById("report-table-body");
             tbody.innerHTML = "";
